@@ -3,9 +3,13 @@ var readline = require('readline');
 var google = require('googleapis');
 var googleAuth = require('google-auth-library');
 var opn = require("opn");
-var express = require('express')
+var express = require('express');
+var opn = require('opn');
+var User = require('../models/models.js');
 // var bodyParser = require('body-parser')
 var app = express()
+const token = process.env.SLACK_TOKEN;
+
 
 const oauthcb = '/oauthcb'
 var SCOPES = ['https://www.googleapis.com/auth/calendar'];
@@ -14,7 +18,7 @@ var authcode = ''
 
 app.get(oauthcb, (req, res) => {
   authcode = req.query.code
-  
+  console.log('here get oauth')
   res.redirect('/')
 })
 
@@ -27,16 +31,23 @@ var oauth2Client = new auth.OAuth2(clientId, clientSecret, redirectUrl)
 
 app.get('/', (req, res) => {
   if (!authcode) {
+    console.log('here get /')
     var authUrl = oauth2Client.generateAuthUrl({
       access_type: 'offline',
       scope: SCOPES,
       redirect_uri: 'http://localhost:3000' + oauthcb,
     });
-    res.redirect(authUrl)
+    res.redirect(authUrl);
   } else {
-
-
-    res.send("Logged in with " + authcode)
+    console.log('here get redirect')
+    User.findOne({}, (err, user) => {
+      console.log('kjhasdf')
+      if (err) {
+        console.log('This is error : ' + err)
+      } else {
+        res.send(user)
+      }
+    })
   }
 })
 

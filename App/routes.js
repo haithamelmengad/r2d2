@@ -17,4 +17,4 @@ router.use(bodyParser.urlencoded({
 	extended: true
 }));
 
-module.exports= router;
+module.exports = router;
