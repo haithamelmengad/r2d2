@@ -12,7 +12,7 @@ const router = express();
 
 // Join directory path to public folder to set static path to this file
 // Use body parser and defines data format (url encoded) for http protocol
-router.use(express.static(path.join(__dirname, "../public")));
+// router.use(express.static(path.join(__dirname, "../public")));
 router.use(bodyParser.urlencoded({
 	extended: true
 }));
