@@ -40,10 +40,10 @@ const getToken = (code) => {
 /**
  * Requests permission to access and write to the user's google calendar.
  * If permission is granted, the googleId token is stored in the database for the user.
- * 
+ *
  * @param {Object} message the message object that the user sends to the slackbot
  */
-const authorizeGoogleCal = (app) => {    
+const authorizeGoogleCal = (app) => {
     app.get(oauthcb, (req, res) => {
         console.log('REQ.QUERY:', req.query);
         let user = req.query.state;
@@ -66,7 +66,7 @@ const authorizeGoogleCal = (app) => {
                     res.send("successfully granted access to calendar");
                 }
             });
-            
+
         });
         console.log('AUTHCODE:', authcode);
     });
@@ -78,7 +78,7 @@ const authorizeGoogleCal = (app) => {
                 access_type: 'offline',
                 scope: SCOPES,
                 state: user,
-                redirect_uri: 'https://f3a92696.ngrok.io' + oauthcb
+                redirect_uri: 'https://579e696e.ngrok.io' + oauthcb
             });
             res.redirect(authUrl);
         }
@@ -138,7 +138,7 @@ function addReminder(date, summary, tokens) {
 
 function addMeeting(startDateTime, duration, subject, location, attendees, tokens) {
     oauth2Client.setCredentials(tokens);
-    
+
     if (duration) { //I'm assuming duration is an integer representing minutes
         endTime = new Date(startDateTime.getTime() + (duration*60000))
     }else{
