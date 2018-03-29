@@ -1,0 +1,102 @@
+{
+  "id": "177830ab-6683-4542-97cb-20f644a875e6",
+  "timestamp": "2018-03-29T18:19:44.505Z",
+  "lang": "en",
+  "result": {
+    "source": "agent",
+    "resolvedQuery": "remind me to work on my slackbot tomorrow",
+    "action": "",
+    "actionIncomplete": false,
+    "parameters": {
+      "date": "2018-03-30",
+      "action": [
+        "work on my slackbot "
+      ],
+      "createTask": "Remind"
+    },
+    "contexts": [],
+    "metadata": {
+      "intentId": "9dcc64f9-5de0-461e-afe9-0a43e17f276e",
+      "webhookUsed": "true",
+      "webhookForSlotFillingUsed": "true",
+      "endConversation": true,
+      "intentName": "reminder.add"
+    },
+    "fulfillment": {
+      "speech": "I set a reminder for you to work on my slackbot on 2018-03-30",
+      "messages": [
+        {
+          "type": 0,
+          "platform": "slack",
+          "speech": "I set a reminder for you to work on my slackbot  on 2018-03-30"
+        },
+        {
+          "type": 0,
+          "platform": "slack",
+          "speech": "I set a reminder for you to work on my slackbot  2018-03-30"
+        },
+        {
+          "type": 0,
+          "speech": "I set a reminder for you to work on my slackbot  on 2018-03-30"
+        }
+      ]
+    },
+    "score": 1
+  },
+  "status": {
+    "code": 200,
+    "errorType": "success",
+    "webhookTimedOut": false
+  },
+  "sessionId": "d028d9a9-5b01-42dc-8251-ea0e1a0ca72c"
+}
+
+
+MEETING:
+{
+  "id": "60c24616-5365-4f35-a867-a4088431da46",
+  "timestamp": "2018-03-29T18:21:31.579Z",
+  "lang": "en",
+  "result": {
+    "source": "agent",
+    "resolvedQuery": "schedule  a meeting including me and haitham tomorrow at 3",
+    "action": "",
+    "actionIncomplete": false,
+    "parameters": {
+      "createMeeting": "Meeting",
+      "invitees": [
+        "me",
+        "haitham"
+      ],
+      "date": "2018-03-30",
+      "time": "03:00:00",
+      "duration": "",
+      "meetingLocation": "",
+      "meetingSubject": "",
+      "given-name": ""
+    },
+    "contexts": [],
+    "metadata": {
+      "intentId": "8dacbf22-7f9d-449c-ad3f-e197037893c2",
+      "webhookUsed": "false",
+      "webhookForSlotFillingUsed": "false",
+      "intentName": "meeting.add"
+    },
+    "fulfillment": {
+      "speech": "There will be a meeting between me and haitham at 03:00:00 on 2018-03-30",
+      "messages": [
+        {
+          "type": 0,
+          "speech": "There will be a meeting between me and haitham at 03:00:00 on 2018-03-30"
+        }
+      ]
+    },
+    "score": 0.9399999976158142
+  },
+  "status": {
+    "code": 200,
+    "errorType": "success",
+    "webhookTimedOut": false
+  },
+  "sessionId": "d028d9a9-5b01-42dc-8251-ea0e1a0ca72c"
+}

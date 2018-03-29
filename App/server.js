@@ -33,19 +33,19 @@ const app = express();
 app.use("/", router);
 
 
-app.get('/google/callback', function(req, res) {
-	getToken(req.query.code)
-	.then(function(tokens){
-		return addReminder('TEST EVENT', '2018-03-25', tokens)
-	})
-	// .then(function(){
-	// 	res.send('Created an event for you');
-	// })
-	.catch(function(error){
-		console.log('Error retrieving token', error);
-		res.status(500).send("Sorry, that didn't work");
-	});
-});
+// app.get('/google/callback', function(req, res) {
+// 	getToken(req.query.code)
+// 	.then(function(tokens){
+// 		return addReminder('TEST EVENT', '2018-03-25', tokens)
+// 	})
+// 	// .then(function(){
+// 	// 	res.send('Created an event for you');
+// 	// })
+// 	.catch(function(error){
+// 		console.log('Error retrieving token', error);
+// 		res.status(500).send("Sorry, that didn't work");
+// 	});
+// });
 
 
 
@@ -91,7 +91,7 @@ rtm.on('message', (message) => {
 				// localStorage.setItem('slackId', message.user);
 				// We now have a channel ID to post a message in!
 				// use the `sendMessage()` method to send a simple string to a channel using the channel ID
-				console.log('Look for a sessionId in this message:', message);
+				// console.log('Look for a sessionId in this message:', message);
 				dialogflow.interpretUserMessage(message.text, message.user) //returns a promise
 				// rtm.sendMessage('You said: ' + message.text, channel.id)
 					// Returns a promise that resolves when the message is sent
@@ -104,8 +104,7 @@ rtm.on('message', (message) => {
 								if(err){
 									console.log(err);
 								} else{
-									console.log('your response 1 : ' + res);
-									// googlecal.addReminder(data.result.parameters.date, data.result.parameters.action[0]);
+									// addReminder(data.result.parameters.date, data.result.parameters.action[0], tokens);
 								}
 							});
 					}else {
@@ -114,15 +113,17 @@ rtm.on('message', (message) => {
 							if(err){
 								console.log(err);
 							} else{
-								console.log('your response 2: ' + res);
 								User.findOne({slackId: message.user})
 								.then((user) => {
-									const tokens = user.googleId;
-									return addReminder(data.result.parameters.date, data.result.parameters.action[0], tokens);
+									const tokens = user.googleTokens;
+									if(data.parameters.createMeeting){
+										// const dateTime = toDateTime(data.result.parameters.date, data.result.parameters.time);
+										const dateTime = new dateTime();
+										return addMeeting(dateTime, data.result.parameters.duration, data.result.parameters.meetingSubject, data.result.parameters.meetingLocation, data.result.parameters.invitees, tokens)
+									}else{
+										return addReminder(data.result.parameters.date, data.result.parameters.action[0], tokens);
+									}
 								})
-								// .then(function(){
-								// 	res.send('Created an event for you');
-								// })
 								.catch(function(error){
 									console.log('Error retrieving token', error);
 									res.status(500).send("Sorry, that didn't work");

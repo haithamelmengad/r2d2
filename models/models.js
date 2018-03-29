@@ -6,7 +6,7 @@ var userSchema = new Schema({
 	slackUsername: String,
 	defaultMeetingMins: Number,
 	slackId: String,
-	googleId: String,
+	googleTokens: Object,
 	slackEmail: String,
 	slackDmIds: Array
 });
@@ -37,6 +37,24 @@ const reminderSchema = new mongoose.Schema({
 const Reminder = mongoose.model('Reminder', reminderSchema);
 
 //Models a Meeting
+
+
+// 'summary': description,
+//         'location': location,
+//         'start': {
+//             'dateTime': startDateTime,
+//             'timeZone': 'America/Los_Angeles',
+//         },
+//         'end': {
+//             'dateTime': endDateTime,
+//             'timeZone': 'America/Los_Angeles',
+//         },
+//         'reminders': {
+//             'useDefault': true,
+//         },
+		// 'attendees': attendees,
+		
+
 const meetingSchema = new mongoose.Schema({
 	day: {
 		type: Date,
@@ -52,7 +70,6 @@ const meetingSchema = new mongoose.Schema({
 	},
 	subject: String,
 	location: String,
-	meetingLength: String, //Hours??
 	googleCalFields: String, //Type??
 	status: {
 		type: String,
