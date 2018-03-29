@@ -5,7 +5,7 @@ import fs from 'fs';
 import readline from 'readline';
 import opn from 'opn';
 import dialogflow from './dialogflow';
-import {authorizeGoogleCal, addReminder, getToken} from './googlecal';
+import {authorizeGoogleCal, addReminder, getToken, addMeeting} from './googlecal';
 const {
 	RTMClient,
 	WebClient,
@@ -97,7 +97,7 @@ rtm.on('message', (message) => {
 					// Returns a promise that resolves when the message is sent
 				.then((res) => {
 					var { data } = res;
-					console.log('*****************DIALOG FLOW RESPONSE:', data)
+					// console.log('*****************DIALOG FLOW RESPONSE:', data)
 					if(data.result.actionIncomplete){
 						web.chat.postMessage({channel: message.channel, text: data.result.fulfillment.speech, username: message.user},
 							(err, res) => { 
@@ -108,33 +108,54 @@ rtm.on('message', (message) => {
 								}
 							});
 					}else {
-						web.chat.postMessage({channel: message.channel, text: `Okay, I will remind you to ${data.result.parameters.action} on ${data.result.parameters.date}`, username: message.user}, 
-						function(err, res){ 
-							if(err){
-								console.log(err);
-							} else{
-								User.findOne({slackId: message.user})
-								.then((user) => {
-									const tokens = user.googleTokens;
-									if(data.parameters.createMeeting){
+						// console.log("DATA:", data);
+						//If the event is scheduling a meeting:
+						if(data.result.parameters.createMeeting){
+							web.chat.postMessage({channel: message.channel, text: `Okay, I scheduled a meeting for ${data.result.parameters.invitees.toString()} on ${data.result.parameters.date} at ${data.result.parameters.time} at ${data.result.parameters.location} to ${data.result.parameters.action}`},
+							function(error, res){
+								if(error){
+									console.log(error);
+								}else{
+									User.findOne({slackId: message.user})
+									.then((user) => {
+										const tokens = user.googleTokens;
 										// const dateTime = toDateTime(data.result.parameters.date, data.result.parameters.time);
-										const dateTime = new dateTime();
-										return addMeeting(dateTime, data.result.parameters.duration, data.result.parameters.meetingSubject, data.result.parameters.meetingLocation, data.result.parameters.invitees, tokens)
-									}else{
-										return addReminder(data.result.parameters.date, data.result.parameters.action[0], tokens);
-									}
-								})
-								.catch(function(error){
-									console.log('Error retrieving token', error);
-									res.status(500).send("Sorry, that didn't work");
-								});
+										const dateTime = new Date();
+										// return addMeeting(dateTime, data.result.parameters.duration, data.result.parameters.meetingSubject, data.result.parameters.meetingLocation, data.result.parameters.invitees, tokens);
+										return addMeeting(dateTime, 45, 'test meeting' , 'The Office', ['sal', 'delaney'], tokens);
+
+									})
+									.catch((error) => {
+										console.log(error)
+										// res.status(500).send("Sorry, we could not schedule the meeting.");
+									});
+								}
 							}
-						});
+						)
+						}else{ //If the event is to set a reminder:
+							web.chat.postMessage({channel: message.channel, text: `Okay, I will remind you to ${data.result.parameters.action} on ${data.result.parameters.date}`, username: message.user}, 
+							function(err, res){ 
+								if(err){
+									console.log(err);
+								} else{
+									User.findOne({slackId: message.user})
+									.then((user) => {
+										const tokens = user.googleTokens;
+										return addReminder(data.result.parameters.date, data.result.parameters.action[0], tokens);	
+									})
+									.catch(function(error){
+										console.log('Error retrieving token', error);
+										// res.status(500).send("Sorry, we could not set the reminder");
+									});
+								}
+							});
+						}
+						
 					}
 				})
 				.catch(console.error);
 			} else {
-				rtm.sendMessage(`Looks like this is our first conversation! Lets get to know eachother. Ive taken the liberty of creating your user profile in our database. Please visit http://localhost:3000/?user=${message.user} to allow me to access your google calendar`, channel.id)
+				rtm.sendMessage(`Looks like this is our first conversation! Lets get to know eachother. Ive taken the liberty of creating your user profile in our database. Please visit https://579e696e.ngrok.io/?user=${message.user} to allow me to access your google calendar`, channel.id)
 					.then((msg) => {
 						console.log(`Intro sent to channel ${channel.id} with ts:${msg.ts}`);
 					})
