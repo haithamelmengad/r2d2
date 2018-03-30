@@ -72,16 +72,16 @@ const authorizeGoogleCal = (app) => {
     });
 
     app.get('/', (req, res) => {
-        if (!authcode) {
-            let user = req.query.user;
-            var authUrl = oauth2Client.generateAuthUrl({
-                access_type: 'offline',
-                scope: SCOPES,
-                state: user,
-                redirect_uri: 'https://579e696e.ngrok.io' + oauthcb
-            });
-            res.redirect(authUrl);
-        }
+
+        let user = req.query.user;
+        var authUrl = oauth2Client.generateAuthUrl({
+            access_type: 'offline',
+            scope: SCOPES,
+            state: user,
+            redirect_uri: 'https://579e696e.ngrok.io' + oauthcb
+        });
+        res.redirect(authUrl);
+
     });
 }
 
@@ -129,18 +129,17 @@ function addReminder(date, summary, tokens) {
 /**
  * Creates a reminder (all-day event) in the user's calendar
  * @param {String} startDateTime start date/time of the meeting
- * @param {String} endDateTime ending date/time of the meeting
  * @param {String} timeZone user's current timezone
  * @param {String} summary subject of the event
  * @param {String} location location of the meeting
  * @param {Array} attendees an array of {'email': 'example@gmail.com'}
  */
 
-function addMeeting(startDateTime, duration, subject, location, attendees, tokens) {
+function addMeeting(startDateTime, duration, description, location, attendees, tokens) {
     oauth2Client.setCredentials(tokens);
-
+    let endDateTime;
     if (duration) { //I'm assuming duration is an integer representing minutes
-        endTime = new Date(startDateTime.getTime() + (duration*60000))
+        endDateTime = new Date(startDateTime.getTime() + (duration*60000))
     }else{
         // set default meeting time to 30 minutes after start time:
         endDateTime = new Date(startDateTime.getTime() + (30 * 60000));
@@ -189,8 +188,37 @@ function addMeeting(startDateTime, duration, subject, location, attendees, token
     });
 }
 
+function availablityPolicy(users, timeMin, timeMax) {
+  oauth2Client.setCredentials(tokens);
+  return new Promise(function (resolve, reject) {
+              calendar.freebusy.query(
+                { //how do we specify client (with token?)
+                  timeMin: "2018-03-30T06:00:00.0z",
+                  timeMax: "2018-03-30T12:30:00.0z",
+                  timeZone: "UTC",
+                  items: [
+                    {
+                      id: "primary"
+                    }
+                  ]
+              }, function (err, res) {
+                  if (err) {
+                      reject(err);
+                  } else {
+                      console.log(res)
+                      resolve(tokens);
+                  }
+              });
+          })
+      .catch(err => {
+          console.log(err)
+      });
+}
+
 module.exports = {
     authorizeGoogleCal,
     addReminder,
     getToken,
+    addMeeting,
+    availablityPolicy
 }
