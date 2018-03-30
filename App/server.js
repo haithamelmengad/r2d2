@@ -5,7 +5,7 @@ import fs from 'fs';
 import readline from 'readline';
 import opn from 'opn';
 import dialogflow from './dialogflow';
-import {authorizeGoogleCal, addReminder, getToken, addMeeting} from './googlecal';
+import {authorizeGoogleCal, addReminder, getToken, addMeeting, createAttendeesString} from './googlecal';
 const {
 	RTMClient,
 	WebClient,
@@ -33,25 +33,8 @@ const app = express();
 app.use("/", router);
 
 
-// app.get('/google/callback', function(req, res) {
-// 	getToken(req.query.code)
-// 	.then(function(tokens){
-// 		return addReminder('TEST EVENT', '2018-03-25', tokens)
-// 	})
-// 	// .then(function(){
-// 	// 	res.send('Created an event for you');
-// 	// })
-// 	.catch(function(error){
-// 		console.log('Error retrieving token', error);
-// 		res.status(500).send("Sorry, that didn't work");
-// 	});
-// });
-
-
-
 // Take any channel for which the bot is a member
 rtm.on('message', (message) => {
-	// console.log('**************MESSAGE:', message);
 	let exist = false; //initialize exist to false
 	User.find({ slackId: message.user })
 		.then(function (user) {
@@ -78,7 +61,6 @@ rtm.on('message', (message) => {
 			if (message.subtype && message.subtype === 'bot_message') {
 				return;
 			}
-			// rtm.activeUserId = id of the bot
 			if (!message.text.includes(`<@${rtm.activeUserId}>`)) {
 				return;
 			}
@@ -86,32 +68,33 @@ rtm.on('message', (message) => {
 			if (exist) {
 				let index = message.text.indexOf('>') + 2;
 				message.text = message.text.slice(index);
-				// Log the message
 				console.log(`(channel:${message.channel}) ${message.user} says: ${message.text}`);
-				// localStorage.setItem('slackId', message.user);
 				// We now have a channel ID to post a message in!
 				// use the `sendMessage()` method to send a simple string to a channel using the channel ID
-				// console.log('Look for a sessionId in this message:', message);
 				dialogflow.interpretUserMessage(message.text, message.user) //returns a promise
-				// rtm.sendMessage('You said: ' + message.text, channel.id)
 					// Returns a promise that resolves when the message is sent
 				.then((res) => {
 					var { data } = res;
-					// console.log('*****************DIALOG FLOW RESPONSE:', data)
 					if(data.result.actionIncomplete){
 						web.chat.postMessage({channel: message.channel, text: data.result.fulfillment.speech, username: message.user},
 							(err, res) => { 
 								if(err){
 									console.log(err);
 								} else{
-									// addReminder(data.result.parameters.date, data.result.parameters.action[0], tokens);
+									// addReminder(data.result.parameters.date, action[0], tokens);
 								}
 							});
 					}else {
-						// console.log("DATA:", data);
 						//If the event is scheduling a meeting:
+						console.log('PARAMETERS', data.result.parameters);
 						if(data.result.parameters.createMeeting){
-							web.chat.postMessage({channel: message.channel, text: `Okay, I scheduled a meeting for ${data.result.parameters.invitees.toString()} on ${data.result.parameters.date} at ${data.result.parameters.time} at ${data.result.parameters.location} to ${data.result.parameters.action}`},
+							const invitees = data.result.parameters['given-name'];
+							const date = data.result.parameters.date;
+							const time = data.result.parameters.time;
+							const action = data.result.parameters.action;
+							const location = data.result.parameters.meetingLocation;
+							const duration = data.result.parameters.duration;
+							web.chat.postMessage({channel: message.channel, text: `Okay, I scheduled a meeting ${invitees? 'with '+ createAttendeesString(invitees): ''} ${date? 'on '+ date: ""} ${time? 'at '+ time: ""} ${location? 'at '+ location: ''} ${action? 'to '+ action: ''}`},
 							function(error, res){
 								if(error){
 									console.log(error);
@@ -119,21 +102,16 @@ rtm.on('message', (message) => {
 									User.findOne({slackId: message.user})
 									.then((user) => {
 										const tokens = user.googleTokens;
-										// const dateTime = toDateTime(data.result.parameters.date, data.result.parameters.time);
-										const dateTime = new Date();
-										// return addMeeting(dateTime, data.result.parameters.duration, data.result.parameters.meetingSubject, data.result.parameters.meetingLocation, data.result.parameters.invitees, tokens);
-										return addMeeting(dateTime, 45, 'test meeting' , 'The Office', ['sal', 'delaney'], tokens);
-
+										return addMeeting(date, time, duration, action, location, invitees, tokens);
 									})
 									.catch((error) => {
 										console.log(error)
-										// res.status(500).send("Sorry, we could not schedule the meeting.");
 									});
 								}
 							}
 						)
 						}else{ //If the event is to set a reminder:
-							web.chat.postMessage({channel: message.channel, text: `Okay, I will remind you to ${data.result.parameters.action} on ${data.result.parameters.date}`, username: message.user}, 
+							web.chat.postMessage({channel: message.channel, text: `Okay, I will remind you to ${data.result.parameters.action[0]} on ${data.result.parameters.date}`, username: message.user}, 
 							function(err, res){ 
 								if(err){
 									console.log(err);
@@ -145,12 +123,10 @@ rtm.on('message', (message) => {
 									})
 									.catch(function(error){
 										console.log('Error retrieving token', error);
-										// res.status(500).send("Sorry, we could not set the reminder");
 									});
 								}
 							});
 						}
-						
 					}
 				})
 				.catch(console.error);
