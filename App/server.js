@@ -3,14 +3,13 @@ import router from "./routes";
 import {User} from "../models/models.js";
 import fs from 'fs';
 import readline from 'readline';
-import google from 'googleapis';
-import googleAuth from 'google-auth-library';
 import opn from 'opn';
-
-// import slack client npm package slack
+import dialogflow from './dialogflow';
+import {authorizeGoogleCal, addReminder, getToken, addMeeting, createAttendeesString} from './googlecal';
 const {
 	RTMClient,
-	WebClient
+	WebClient,
+	RTM_EVENTS,
 } = require('@slack/client');
 import mongoose from 'mongoose';
 
@@ -36,7 +35,6 @@ app.use("/", router);
 
 // Take any channel for which the bot is a member
 rtm.on('message', (message) => {
-
 	let exist = false; //initialize exist to false
 	User.find({ slackId: message.user })
 		.then(function (user) {
@@ -63,85 +61,86 @@ rtm.on('message', (message) => {
 			if (message.subtype && message.subtype === 'bot_message') {
 				return;
 			}
-			// rtm.activeUserId = id of the bot
 			if (!message.text.includes(`<@${rtm.activeUserId}>`)) {
 				return;
 			}
-			const channel = {
-				id: message.channel
-			};
+			const channel = { id: message.channel };
 			if (exist) {
 				let index = message.text.indexOf('>') + 2;
 				message.text = message.text.slice(index);
-
-				// Log the message
 				console.log(`(channel:${message.channel}) ${message.user} says: ${message.text}`);
-				localStorage.setItem('slackId', message.user);
 				// We now have a channel ID to post a message in!
 				// use the `sendMessage()` method to send a simple string to a channel using the channel ID
-				rtm.sendMessage('You said: ' + message.text, channel.id)
+				dialogflow.interpretUserMessage(message.text, message.user) //returns a promise
 					// Returns a promise that resolves when the message is sent
-					.then((msg) => console.log(`Message sent to channel ${channel.id} with ts:${msg.ts}`))
-					.catch(console.error);
+				.then((res) => {
+					var { data } = res;
+					if(data.result.actionIncomplete){
+						web.chat.postMessage({channel: message.channel, text: data.result.fulfillment.speech, username: message.user},
+							(err, res) => { 
+								if(err){
+									console.log(err);
+								} else{
+									// addReminder(data.result.parameters.date, action[0], tokens);
+								}
+							});
+					}else {
+						//If the event is scheduling a meeting:
+						console.log('PARAMETERS', data.result.parameters);
+						if(data.result.parameters.createMeeting){
+							const invitees = data.result.parameters['given-name'];
+							const date = data.result.parameters.date;
+							const time = data.result.parameters.time;
+							const action = data.result.parameters.action;
+							const location = data.result.parameters.meetingLocation;
+							const duration = data.result.parameters.duration;
+							web.chat.postMessage({channel: message.channel, text: `Okay, I scheduled a meeting ${invitees? 'with '+ createAttendeesString(invitees): ''} ${date? 'on '+ date: ""} ${time? 'at '+ time: ""} ${location? 'at '+ location: ''} ${action? 'to '+ action: ''}`},
+							function(error, res){
+								if(error){
+									console.log(error);
+								}else{
+									User.findOne({slackId: message.user})
+									.then((user) => {
+										const tokens = user.googleTokens;
+										return addMeeting(date, time, duration, action, location, invitees, tokens);
+									})
+									.catch((error) => {
+										console.log(error)
+									});
+								}
+							}
+						)
+						}else{ //If the event is to set a reminder:
+							web.chat.postMessage({channel: message.channel, text: `Okay, I will remind you to ${data.result.parameters.action[0]} on ${data.result.parameters.date}`, username: message.user}, 
+							function(err, res){ 
+								if(err){
+									console.log(err);
+								} else{
+									User.findOne({slackId: message.user})
+									.then((user) => {
+										const tokens = user.googleTokens;
+										return addReminder(data.result.parameters.date, data.result.parameters.action[0], tokens);	
+									})
+									.catch(function(error){
+										console.log('Error retrieving token', error);
+									});
+								}
+							});
+						}
+					}
+				})
+				.catch(console.error);
 			} else {
-				rtm.sendMessage('Looks like this is our first conversation! Lets get to know eachother. Ive taken the liberty of creating your user profile in our database. Please visit http://localhost:3000 to allow me to access your google calendar', channel.id)
+				rtm.sendMessage(`Looks like this is our first conversation! Lets get to know eachother. Ive taken the liberty of creating your user profile in our database. Please visit https://579e696e.ngrok.io/?user=${message.user} to allow me to access your google calendar`, channel.id)
 					.then((msg) => {
-						authorizeGoogleCal(message);
 						console.log(`Intro sent to channel ${channel.id} with ts:${msg.ts}`);
 					})
-					.catch(console.error);
+					.catch((error) => {console.error});
 			}
 		});
 });
 
-
-/**
- * Requests permission to access and write to the user's google calendar.
- * If permission is granted, the googleId token is stored in the database for the user.
- * 
- * @param {Object} message the message object that the user sends to the slackbot
- */
-function authorizeGoogleCal(message) {
-	const oauthcb = '/oauthcb';
-	var SCOPES = ['https://www.googleapis.com/auth/calendar'];
-
-	var authcode = '';
-	app.get(oauthcb, (req, res) => {
-		authcode = req.query.code;
-		console.log('AUTHCODE:', authcode);
-		res.redirect('/');
-	});
-
-	const credentials = JSON.parse(process.env.CLIENTSECRET);
-	var clientSecret = credentials.installed.client_secret;
-	var clientId = credentials.installed.client_id;
-	var redirectUrl = credentials.installed.redirect_uris[0];
-	var auth = new googleAuth();
-	var oauth2Client = new auth.OAuth2(clientId, clientSecret, redirectUrl);
-
-	app.get('/', (req, res) => {
-	console.log('Redirected to /');
-	
-	if (!authcode) {
-		var authUrl = oauth2Client.generateAuthUrl({
-		access_type: 'offline',
-		scope: SCOPES,
-		redirect_uri: 'http://localhost:3000' + oauthcb
-		});
-		opn(authUrl); // why is this not opening?
-		res.redirect(authUrl);
-	} else {
-		User.findOneAndUpdate({slackId: message.user}, {$set:{googleId: clientId}}, {'new': true}, (err, user) => {
-		if (err) {
-			console.log('Error: ' + err);
-		} else {
-			res.send(user);
-		}
-		});
-	}
-	});
-}
-
+authorizeGoogleCal(app);
 app.listen(3000, () => {
 	console.log("Server listening on port 3000!");
 });

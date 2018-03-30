@@ -6,7 +6,7 @@ var userSchema = new Schema({
 	slackUsername: String,
 	defaultMeetingMins: Number,
 	slackId: String,
-	googleId: String,
+	googleTokens: Object,
 	slackEmail: String,
 	slackDmIds: Array
 });
@@ -37,58 +37,75 @@ const reminderSchema = new mongoose.Schema({
 const Reminder = mongoose.model('Reminder', reminderSchema);
 
 //Models a Meeting
-const meetingSchema = new mongoose.Schema({
-	day: {
-		type: Date,
-		required: true
-	},
-	time: {
-		type: Date, //time??
-		required: true
-	},
-	invitees: {
-		type: Array,
-		required: true
-	},
-	subject: String,
-	location: String,
-	meetingLength: String, //Hours??
-	googleCalFields: String, //Type??
-	status: {
-		type: String,
-		enum: ['Pending', 'Scheduled']
-	},
-	createdAt: Date, //type?
-	requesterId: {
-		type: Schema.Types.ObjectId,
-		ref: 'User'
-	}
-});
-
-const Meeting = mongoose.model('Meeting', meetingSchema);
 
 
+// 'summary': description,
+//         'location': location,
+//         'start': {
+//             'dateTime': startDateTime,
+//             'timeZone': 'America/Los_Angeles',
+//         },
+//         'end': {
+//             'dateTime': endDateTime,
+//             'timeZone': 'America/Los_Angeles',
+//         },
+//         'reminders': {
+//             'useDefault': true,
+//         },
+		// 'attendees': attendees,
+		
 
-/**
- * Models an invite request
- */
-const inviteRequestSchema = new mongoose.Schema({
-	eventId: {
-		type: Schema.Types.ObjectId
-	},
-	inviteeId: {
-		type: Schema.Types.ObjectId
-	},
-	requesterId: {
-		type: Schema.Types.ObjectId
-	},
-	status: {
-		type: String,
-		enum: ['Pending', 'Scheduled']
-	}
-});
+// const meetingSchema = new mongoose.Schema({
+// 	day: {
+// 		type: Date,
+// 		required: true
+// 	},
+// 	time: {
+// 		type: Date, //time??
+// 		required: true
+// 	},
+// 	invitees: {
+// 		type: Array,
+// 		required: true
+// 	},
+// 	subject: String,
+// 	location: String,
+// 	googleCalFields: String, //Type??
+// 	status: {
+// 		type: String,
+// 		enum: ['Pending', 'Scheduled']
+// 	},
+// 	createdAt: Date, //type?
+// 	requesterId: {
+// 		type: Schema.Types.ObjectId,
+// 		ref: 'User'
+// 	}
+// });
 
-const InviteRequest = mongoose.model('InviteRequest', inviteRequestSchema);
+// const Meeting = mongoose.model('Meeting', meetingSchema);
+
+
+
+// /**
+//  * Models an invite request
+//  */
+// const inviteRequestSchema = new mongoose.Schema({
+// 	eventId: {
+// 		type: Schema.Types.ObjectId
+// 	},
+// 	inviteeId: {
+// 		type: Schema.Types.ObjectId
+// 	},
+// 	requesterId: {
+// 		type: Schema.Types.ObjectId
+// 	},
+// 	status: {
+// 		type: String,
+// 		enum: ['Pending', 'Scheduled']
+// 	}
+// });
+
+// const InviteRequest = mongoose.model('InviteRequest', inviteRequestSchema);
 
 
 module.exports = {
