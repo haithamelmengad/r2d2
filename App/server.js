@@ -74,7 +74,7 @@ rtm.on('message', (message) => {
 		.catch(function (error) {
 			console.log(error, 'please create user');
 		}).then(() => {
-			availablityPolicy()
+
 			// Skip messages that are from a bot or my own user ID
 			if (message.subtype && message.subtype === 'bot_message') {
 				return;
@@ -142,6 +142,7 @@ rtm.on('message', (message) => {
 									User.findOne({slackId: message.user})
 									.then((user) => {
 										const tokens = user.googleTokens;
+										availablityPolicy(tokens)
 										return addReminder(data.result.parameters.date, data.result.parameters.action[0], tokens);
 									})
 									.catch(function(error){

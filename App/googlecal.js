@@ -188,29 +188,34 @@ function addMeeting(startDateTime, duration, description, location, attendees, t
     });
 }
 
-function availablityPolicy(users, timeMin, timeMax) {
+function availablityPolicy(tokens) {
   oauth2Client.setCredentials(tokens);
   return new Promise(function (resolve, reject) {
               calendar.freebusy.query(
                 { //how do we specify client (with token?)
-                  timeMin: "2018-03-30T06:00:00.0z",
-                  timeMax: "2018-03-30T12:30:00.0z",
-                  timeZone: "UTC",
-                  items: [
-                    {
-                      id: "primary"
-                    }
-                  ]
+                  auth: oauth2Client,
+                  resource: {
+                    timeMin: "2018-03-30T06:00:00.0z",
+                    timeMax: "2018-03-30T12:30:00.0z",
+                    timeZone: "UTC",
+                    items: [
+                      {
+                        id: "primary"
+                      }
+                    ]
+                  }
               }, function (err, res) {
                   if (err) {
                       reject(err);
                   } else {
+                      console.log('this is the res')
                       console.log(res)
                       resolve(tokens);
                   }
               });
           })
       .catch(err => {
+          console.log("this is error")
           console.log(err)
       });
 }
