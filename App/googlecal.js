@@ -1,9 +1,6 @@
-import {
-    google
-} from 'googleapis';
-import {
-    User
-} from '../models/models';
+import { google } from 'googleapis';
+import { User } from '../models/models';
+const IntlMessageFormat = require('intl-messageformat');
 const oauthcb = '/oauthcb';
 const SCOPES = ['https://www.googleapis.com/auth/calendar'];
 
@@ -21,7 +18,6 @@ const getToken = (code) => {
             if (err) {
                 console.log('REJECTED', err)
                 oauth2Client.refreshAccessToken((err, tokens) => {
-                    console.log(tokens);
                     // your access_token is now refreshed and stored in oauth2Client
                     // store these new tokens in a safe place (e.g. database)
                     if(err){
@@ -45,7 +41,6 @@ const getToken = (code) => {
  */
 const authorizeGoogleCal = (app) => {
     app.get(oauthcb, (req, res) => {
-        console.log('REQ.QUERY:', req.query);
         let user = req.query.state;
         authcode = req.query.code;
         getToken(authcode)
@@ -62,13 +57,10 @@ const authorizeGoogleCal = (app) => {
                 if (err) {
                     console.log('Error: ' + err);
                 } else {
-                    console.log('your code is', authcode);
                     res.send("successfully granted access to calendar");
                 }
             });
-
         });
-        console.log('AUTHCODE:', authcode);
     });
 
     app.get('/', (req, res) => {
@@ -92,10 +84,9 @@ const authorizeGoogleCal = (app) => {
  * @param {String} summary subject of the reminder
  */
 function addReminder(date, summary, tokens) {
-    // var client = getAuthclient();
     oauth2Client.setCredentials(tokens);
     return new Promise(function (resolve, reject) {
-                calendar.events.insert({ //how do we specify client (with token?)
+                calendar.events.insert({
                     auth: oauth2Client,
                     calendarId: 'primary',
                     resource: {
@@ -127,6 +118,40 @@ function addReminder(date, summary, tokens) {
 }
 
 /**
+ * Helper funciton that creates a string that lists the meeting participants
+ * @param {Array} attendees list of people attending the meeting
+ */
+const createAttendeesString = (attendees) => {
+    if(attendees.length===0){
+        return;
+    }
+    if(attendees.length===1){
+        return attendees;
+    }else{
+        const attendeesCopy = [...attendees];
+        let lastAttendee = attendeesCopy[attendeesCopy.length-1];
+        attendeesCopy[attendeesCopy.length-1] = 'and ' + lastAttendee;
+        if(attendeesCopy.length===2){
+            return attendeesCopy.join(' ');
+        }else{
+            return attendeesCopy.join(', ')
+        }
+    }
+}
+
+/**
+ * Helper function that creates a dateTime string to be passed to the meeting event
+ * @param {String} date Date of the meeting
+ * @param {String} time Time of the meeting
+ */
+const getDateTime = (date, time) => {
+    const d = date.split('-');
+    const t = time.split(':');
+    const dateTime = new Date(d[0], (d[1]-1), d[2], t[0], t[1], t[2])
+    return dateTime
+}
+
+/**
  * Creates a reminder (all-day event) in the user's calendar
  * @param {String} startDateTime start date/time of the meeting
  * @param {String} timeZone user's current timezone
@@ -135,20 +160,27 @@ function addReminder(date, summary, tokens) {
  * @param {Array} attendees an array of {'email': 'example@gmail.com'}
  */
 
-function addMeeting(startDateTime, duration, description, location, attendees, tokens) {
+function addMeeting(startDate, startTime, duration, description, location, attendees, tokens) {
     oauth2Client.setCredentials(tokens);
+    const dateTime = getDateTime(startDate, startTime);
+    console.log('DATETIME:', dateTime);
+    const startDateTime = dateTime;
+    let endDateObj;
     let endDateTime;
     if (duration) { //I'm assuming duration is an integer representing minutes
-        endDateTime = new Date(startDateTime.getTime() + (duration*60000))
+        endDateObj = new Date(startDateTime.getTime() + (duration*60000));
+        endDateTime = endDateObj.toISOString();
     }else{
-        // set default meeting time to 30 minutes after start time:
-        endDateTime = new Date(startDateTime.getTime() + (30 * 60000));
+        endDateObj = new Date(dateTime.getTime() + (30*60000));
+        endDateTime = endDateObj.toISOString();
     }
+    const attendeesString = createAttendeesString(attendees);
+    const subject = description ? description : 'Meeting with '+ attendeesString;
     var event = {
-        'summary': description,
+        'summary': subject,
         'location': location,
         'start': {
-            'dateTime': startDateTime,
+            'dateTime': dateTime.toISOString(),
             'timeZone': 'America/Los_Angeles',
         },
         'end': {
@@ -160,7 +192,6 @@ function addMeeting(startDateTime, duration, description, location, attendees, t
         },
         'attendees': attendees,
     }
-
     return new Promise(function (resolve, reject) {
         calendar.events.insert({
             auth: oauth2Client,
@@ -169,23 +200,14 @@ function addMeeting(startDateTime, duration, description, location, attendees, t
         },
         function (err, res) {
             if (err) {
+                console.log('FAILED');
                 reject(err);
             } else {
+                console.log('INSERTED MEETING');
                 resolve(tokens);
             }
         });
     })
-    .catch(error => {console.log(error)})
-
-
-
-    var request = google.client.calendar.events.insert({ //how do we specify client (look in html file)
-        'calendarId': 'primary',
-        'resource': event,
-    });
-    request.execute(function (event) {
-        appendPre('Event created:', event.htmlLink);
-    });
 }
 
 function availablityPolicy(tokens) {
@@ -225,5 +247,6 @@ module.exports = {
     addReminder,
     getToken,
     addMeeting,
-    availablityPolicy
+    availablityPolicy,
+    createAttendeesString,
 }
