@@ -12,6 +12,8 @@ var redirectUrl = credentials.installed.redirect_uris[0];
 var oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUrl);
 var calendar = google.calendar('v3');
 
+
+
 const getToken = (code) => {
     return new Promise(function (resolve, reject) {
         oauth2Client.getToken(code, function (err, tokens) {
@@ -70,7 +72,7 @@ const authorizeGoogleCal = (app) => {
             access_type: 'offline',
             scope: SCOPES,
             state: user,
-            redirect_uri: 'https://579e696e.ngrok.io' + oauthcb
+            redirect_uri: redirectUrl,
         });
         res.redirect(authUrl);
 
@@ -114,7 +116,6 @@ function addReminder(date, summary, tokens) {
         .catch(err => {
             console.log(err)
         });
-
 }
 
 /**
@@ -160,10 +161,10 @@ const getDateTime = (date, time) => {
  * @param {Array} attendees an array of {'email': 'example@gmail.com'}
  */
 
-function addMeeting(startDate, startTime, duration, description, location, attendees, tokens) {
+const addMeeting = (startDate, startTime, duration, description, location, attendees, tokens) => {
+    console.log('Adding a meeting 1');
     oauth2Client.setCredentials(tokens);
     const dateTime = getDateTime(startDate, startTime);
-    console.log('DATETIME:', dateTime);
     const startDateTime = dateTime;
     let endDateObj;
     let endDateTime;
@@ -352,4 +353,5 @@ module.exports = {
     addMeeting,
     availablityPolicy,
     createAttendeesString,
+    redirectUrl,
 }
