@@ -5,7 +5,7 @@ import fs from 'fs';
 import readline from 'readline';
 import opn from 'opn';
 import dialogflow from './dialogflow';
-import {authorizeGoogleCal, addReminder, getToken, addMeeting, createAttendeesString, availablityPolicygi} from './googlecal';
+import {authorizeGoogleCal, addReminder, getToken, addMeeting, createAttendeesString, availablityPolicy} from './googlecal';
 
 const {
 	RTMClient,
@@ -63,13 +63,13 @@ rtm.on('message', (message) => {
 			if (message.subtype && message.subtype === 'bot_message') {
 				return;
 			}
-			if (!message.text.includes(`<@${rtm.activeUserId}>`)) {
-				return;
-			}
+			// if (!message.text.includes(`<@${rtm.activeUserId}>`)) {
+			// 	return;
+			// }
 			const channel = { id: message.channel };
 			if (exist) {
-				let index = message.text.indexOf('>') + 2;
-				message.text = message.text.slice(index);
+				// let index = message.text.indexOf('>') + 2;
+				// message.text = message.text.slice(index);
 				console.log(`(channel:${message.channel}) ${message.user} says: ${message.text}`);
 				// We now have a channel ID to post a message in!
 				// use the `sendMessage()` method to send a simple string to a channel using the channel ID
@@ -104,6 +104,7 @@ rtm.on('message', (message) => {
 									User.findOne({slackId: message.user})
 									.then((user) => {
 										const tokens = user.googleTokens;
+										// availablityPolicy(tokens)
 										return addMeeting(date, time, duration, action, location, invitees, tokens);
 									})
 									.catch((error) => {
@@ -121,7 +122,6 @@ rtm.on('message', (message) => {
 									User.findOne({slackId: message.user})
 									.then((user) => {
 										const tokens = user.googleTokens;
-										availablityPolicy(tokens)
 										return addReminder(data.result.parameters.date, data.result.parameters.action[0], tokens);
 									})
 									.catch(function(error){
