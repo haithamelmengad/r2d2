@@ -8,7 +8,8 @@ var userSchema = new Schema({
 	slackId: String,
 	googleTokens: Object,
 	slackEmail: String,
-	slackDmIds: Array
+	channel: String,
+	name: String,
 });
 
 var User = mongoose.model('User', userSchema);
@@ -26,7 +27,7 @@ const reminderSchema = new mongoose.Schema({
 	},
 	googleCalEventId: {
 		type: Schema.Types.ObjectId
-		// ref: 
+		// ref:
 	},
 	requesterId: {
 		type: Schema.Types.ObjectId,
@@ -53,36 +54,36 @@ const Reminder = mongoose.model('Reminder', reminderSchema);
 //             'useDefault': true,
 //         },
 		// 'attendees': attendees,
-		
 
-// const meetingSchema = new mongoose.Schema({
-// 	day: {
-// 		type: Date,
-// 		required: true
-// 	},
-// 	time: {
-// 		type: Date, //time??
-// 		required: true
-// 	},
-// 	invitees: {
-// 		type: Array,
-// 		required: true
-// 	},
-// 	subject: String,
-// 	location: String,
-// 	googleCalFields: String, //Type??
-// 	status: {
-// 		type: String,
-// 		enum: ['Pending', 'Scheduled']
-// 	},
-// 	createdAt: Date, //type?
-// 	requesterId: {
-// 		type: Schema.Types.ObjectId,
-// 		ref: 'User'
-// 	}
-// });
 
-// const Meeting = mongoose.model('Meeting', meetingSchema);
+const meetingSchema = new mongoose.Schema({
+	day: {
+		type: Date,
+		required: true
+	},
+	time: {
+		type: Date, //time??
+		required: true
+	},
+	invitees: {
+		type: Array,
+		required: true
+	},
+	subject: String,
+	location: String,
+	googleCalFields: String, //Type??
+	status: {
+		type: String,
+		enum: ['Pending', 'Scheduled']
+	},
+	createdAt: Date, //type?
+	requesterId: {
+		type: Schema.Types.ObjectId,
+		ref: 'User'
+	}
+});
+
+const Meeting = mongoose.model('Meeting', meetingSchema);
 
 
 
@@ -110,6 +111,4 @@ const Reminder = mongoose.model('Reminder', reminderSchema);
 
 module.exports = {
 	User,
-	Meeting,
-	Reminder
 };

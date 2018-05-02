@@ -21,6 +21,7 @@
     "@slack/client": "^4.1.0",
     "babel-eslint": "^8.2.2",
     "body-parser": "^1.18.2",
+    "date-and-time": "^0.6.2",
     "eslint": "^4.19.1",
     "eslint-config-defaults": "^9.0.0",
     "eslint-plugin-react": "^7.7.0",

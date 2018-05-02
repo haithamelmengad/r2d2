@@ -3,7 +3,7 @@ import { User } from '../models/models';
 const IntlMessageFormat = require('intl-messageformat');
 const oauthcb = '/oauthcb';
 const SCOPES = ['https://www.googleapis.com/auth/calendar'];
-
+const date = require('date-and-time');
 var authcode = '';
 const credentials = JSON.parse(process.env.CLIENTSECRET);
 var clientSecret = credentials.installed.client_secret;
@@ -11,6 +11,8 @@ var clientId = credentials.installed.client_id;
 var redirectUrl = credentials.installed.redirect_uris[0];
 var oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUrl);
 var calendar = google.calendar('v3');
+
+
 
 const getToken = (code) => {
     return new Promise(function (resolve, reject) {
@@ -36,10 +38,10 @@ const getToken = (code) => {
 /**
  * Requests permission to access and write to the user's google calendar.
  * If permission is granted, the googleId token is stored in the database for the user.
- * 
+ *
  * @param {Object} message the message object that the user sends to the slackbot
  */
-const authorizeGoogleCal = (app) => {    
+const authorizeGoogleCal = (app) => {
     app.get(oauthcb, (req, res) => {
         let user = req.query.state;
         authcode = req.query.code;
@@ -64,16 +66,16 @@ const authorizeGoogleCal = (app) => {
     });
 
     app.get('/', (req, res) => {
-        
+
         let user = req.query.user;
         var authUrl = oauth2Client.generateAuthUrl({
             access_type: 'offline',
             scope: SCOPES,
             state: user,
-            redirect_uri: 'https://579e696e.ngrok.io' + oauthcb
+            redirect_uri: redirectUrl,
         });
         res.redirect(authUrl);
-        
+
     });
 }
 
@@ -114,7 +116,6 @@ function addReminder(date, summary, tokens) {
         .catch(err => {
             console.log(err)
         });
-
 }
 
 /**
@@ -160,20 +161,23 @@ const getDateTime = (date, time) => {
  * @param {Array} attendees an array of {'email': 'example@gmail.com'}
  */
 
-function addMeeting(startDate, startTime, duration, description, location, attendees, tokens) {
+const addMeeting = (startDate, startTime, duration, description, location, attendees, tokens) => {
+    console.log('Adding a meeting 1');
     oauth2Client.setCredentials(tokens);
     const dateTime = getDateTime(startDate, startTime);
-    console.log('DATETIME:', dateTime);
     const startDateTime = dateTime;
     let endDateObj;
     let endDateTime;
+
     if (duration) { //I'm assuming duration is an integer representing minutes
         endDateObj = new Date(startDateTime.getTime() + (duration*60000));
         endDateTime = endDateObj.toISOString();
-    }else{
+    } else {
         endDateObj = new Date(dateTime.getTime() + (30*60000));
         endDateTime = endDateObj.toISOString();
     }
+
+
     const attendeesString = createAttendeesString(attendees);
     const subject = description ? description : 'Meeting with '+ attendeesString;
     var event = {
@@ -192,6 +196,9 @@ function addMeeting(startDate, startTime, duration, description, location, atten
         },
         'attendees': attendees,
     }
+
+    availablityPolicy(dateTime.toISOString(), endDateTime, attendees, tokens)
+
     return new Promise(function (resolve, reject) {
         calendar.events.insert({
             auth: oauth2Client,
@@ -210,10 +217,141 @@ function addMeeting(startDate, startTime, duration, description, location, atten
     })
 }
 
+function availablityPolicy(startTime, endTime, attendees, tokens) {
+  // initialize array
+  let dateStart = new Date(startTime)
+  let dateArr = []
+  for (var i = 0; i < 5; i++) {
+    dateArr[i] = []
+    for (var j = 0; j < 18; j++) {
+      let timeAdd = (j+1)*30
+    dateArr[i][j] = date.addMinutes(dateStart, timeAdd).toISOString()
+    }
+    dateStart = date.addDays(dateStart, 1)
+    dateStart.setHours(1);
+  }
+  console.log(dateArr)
+
+
+
+  oauth2Client.setCredentials(tokens);
+  console.log(tokens)
+  return new Promise(function (resolve, reject) {
+              calendar.freebusy.query(
+                {
+                  auth: oauth2Client,
+                  resource: {
+                    timeMin: startTime,
+                    timeMax: endTime,
+                    timeZone: "PST",
+                    items: [
+                      {
+                        id: "primary"
+                      }
+                    ]
+                  }
+              }, function (err, res) {
+                  if (err) {
+                      reject(err);
+                  } else {
+                      console.log('this is the res')
+                      console.log(res.data)
+                      console.log(res.data.calendars.primary)
+                      if(res.data.calendars.primary.busy.length === 0) {
+                        console.log('not busy, or one could say free')
+                        //somehow return tru here?
+                        resolve(true)
+                      }
+                      else if (res.data.calendars.primary.busy.length !== 0) {
+                        console.log('busy, or one could say not free')
+                        Promise.all([getFreeTime(endTime, attendees, tokens),getFreeTime(endTime, attendees, tokens)])
+                        .then((dates) => {
+                          console.log("/////////// DATESFREE: ")
+                          console.log(dates)
+                          for (var k = 0; k < dateArr.length; k++) {
+                            for (var l = 0; l < dateArr[k].length; l++) {
+                              for (var f = 0; f < dates.length; f++) {
+                                for (var g = 0; g < dates[f].length; g++) {
+
+
+                                  if ( dateArr[l][k] = dates[f][l] ) {console.log('theres a match')}
+                                }
+                              }
+                            }
+                          }
+
+                          resolve(tokens)
+                        });
+                      }
+                  }
+              });
+          })
+      .catch(err => {
+          console.log("this is error")
+          console.log(err)
+      });
+}
+
+
+function getFreeTime(meetingEnd, attendees, tokens) {
+  //determine the range (end time)
+  let begin = new Date(meetingEnd)
+  let end = date.addDays(begin, 7)
+  begin = begin.toISOString()
+  end = end.toISOString()
+  //get information about how busy each user is
+  // for each user in the attendees Array:
+  oauth2Client.setCredentials(tokens);
+  return new Promise(function (resolve, reject) {
+              calendar.freebusy.query(
+                { //how do we specify client (with token?)
+                  auth: oauth2Client,
+                  resource: {
+                    timeMin: begin,
+                    timeMax: end,
+                    timeZone: "PST",
+                    items: [
+                      {
+                        id: "primary"
+                      }
+                    ]
+                  }
+              }, function (err, res) {
+                  if (err) {
+                      reject(err);
+                  } else {
+                      if(res.data.calendars.primary.busy.length === 0) {
+                        console.log('not busy at all, how did this end up passing?')
+                        //somehow return tru here?
+                        resolve([]);
+                      }
+                      else if (res.data.calendars.primary.busy.length !== 0) {
+                        console.log('busy, or one could say not free')
+                        let busyArr = res.data.calendars.primary.busy
+                        console.log(busyArr)
+                        resolve(busyArr)
+
+                      } else {console.log('not even sure how this happened')}
+                  }
+              });
+          })
+      .catch(err => {
+          console.log("this is error")
+          console.log(err)
+      });
+    }
+
+
+
+
+
+
 module.exports = {
     authorizeGoogleCal,
     addReminder,
     getToken,
     addMeeting,
+    availablityPolicy,
     createAttendeesString,
+    redirectUrl,
 }
